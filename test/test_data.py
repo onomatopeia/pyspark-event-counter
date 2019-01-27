@@ -103,7 +103,7 @@ def test_generate_events():
 
 if __name__ == '__main__':
     output_file = os.path.join('data', 'location2.csv')
-    T, N = generate_events_in_chunks(output_file)
+    T, N = generate_events(output_file, 1024, 5)
     output_file_size = os.path.getsize(output_file)
     print(f"{N} fake events generated in {T} seconds and written to {output_file} [{output_file_size}]")
 
