@@ -7,9 +7,13 @@
 The code was written in Python 3 and tested under Python 3.6.5, but is (to the best of my knowledge) compliant with 
 earlier versions of Python 3.x as well as with Python 2.7. 
   
-
+Below are instruction how to execute this Spark application on [local environment](#local-environment) and on [AWS 
+EMR](#aws-emr). 
+In either case, **clone this repository to your local machine** first. 
 
 ## Local environment
+
+### Prerequisites
 
 To run this code locally you need to have Spark installed and `pyspark` Python module.
 
@@ -28,6 +32,18 @@ file. Use this flag to delete partial output files. By default all partial files
 debugging or verification purposes.    
 
 Run `spark-submit events_counter.py -h` to see help. 
+
+## AWS EMR
+
+### Prerequisites
+- an S3 bucket with data folder containing `region.csv` and `location.csv` files
+- an S3 bucket where the Spark application can be copied to
+- configured AWS CLI 
+
+### Running Spark application
+
+
+
 
 # Tests
 

@@ -4,7 +4,7 @@ from data_generator import generate_events, avg_chars_per_line
 
 
 def test_generate_events():
-    events_file = os.path.join('data', 'test_location.csv')
+    events_file = os.path.join('test', 'data', 'test_location.csv')
     try:
         t, n = generate_events(events_file, 1000)
         file_size = os.path.getsize(events_file)
