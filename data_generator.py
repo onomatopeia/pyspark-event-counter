@@ -1,8 +1,11 @@
+from __future__ import print_function
 import os
 import random
 import time
 from datetime import timedelta, date
 from math import ceil
+import getopt
+import sys
 
 
 class FakeNZEventGenerator:
@@ -36,7 +39,10 @@ class FakeNZEventGenerator:
         return self.start_date + timedelta(days=random.randint(0, self.date_range_days))
 
     def event(self):
-        return f"\"{self.latitude():.5f}\",\"{self.longitude():.5f}\",\"{self.region()}\",\"{self.date()}\"\n"
+        return "\"{0:.5f}\",\"{1:.5f}\",\"{2}\",\"{3}\"\n".format(self.latitude(),
+                                                                  self.longitude(),
+                                                                  self.region(),
+                                                                  self.date())
 
     def events(self, n):
         for _ in range(n):
@@ -44,24 +50,11 @@ class FakeNZEventGenerator:
 
 
 avg_chars_per_line = 42
+FILE_1GB = 1073741824
 
 
-def generate_events(path_to_file, file_size=1073741824, regions=53, start_date=date.today(), date_range=7):
-    """This method will by default generate a file of approximately 1GB with fake event data."""
-    fake = FakeNZEventGenerator(start_date, date_range, regions)
-    t0 = time.time()
-
-    n = int(file_size // avg_chars_per_line)
-    with open(path_to_file, "w+") as f:
-        f.write("\"lat\",\"long\",\"region_id\",\"date\"\n")
-        f.write("".join(fake.events(n)))
-
-    t1 = time.time()
-    return t1 - t0, n
-
-
-def generate_events_in_chunks(path_to_file, file_size=1073741824, regions=53, start_date=date.today(), date_range=7,
-                              chunk_size = 23):
+def generate_events(path_to_file, file_size=FILE_1GB, regions=53, start_date=date.today(), date_range=7,
+                    chunk_size=23):
     """
     Generates a file of approx file_size size in steps of chunk_size-events units
     :param path_to_file: path to the output file
@@ -83,27 +76,43 @@ def generate_events_in_chunks(path_to_file, file_size=1073741824, regions=53, st
             f.write("".join(fake.events(chunk_size)))
 
     t1 = time.time()
-    return t1 - t0, N
+    return t1 - t0, n*chunk_size
 
 
-def test_generate_events():
-    events_file = os.path.join('data', 'test_location.csv')
+def main(file_size, output_folder):
+    output_file = os.path.join(output_folder, 'location.csv')
+    t, n = generate_events(output_file, file_size)
+    output_file_size = os.path.getsize(output_file)
+    print("{} fake events generated in {} seconds and written to {} [{}]".format(n, t, output_file, output_file_size))
+
+
+def read_args(argv):
+    usage_info = 'Usage:\n\tpython3 data_generator.py [-s <file_size>] <output_folder>\nor\n\tpython3 ' \
+                 'data_generator.py [--size <file_size>] <output_folder>'
+    file_size = FILE_1GB
+    if len(argv) == 1:
+        print("Error: Not enough arguments.\n"+usage_info)
+        sys.exit(-2)
+
     try:
-        t, n = generate_events(events_file, 1024)
-        file_size = os.path.getsize(events_file)
-        print(f"{n} fake events generated in {t} seconds and written to {events_file} [{file_size}]")
-        assert n == 24, f"Expected 24 events but got {n}"
-        assert file_size < 1.1 * 1024, f"Expected approx 1024 B but got {file_size}B"
-    finally:
-        try:
-            os.remove(events_file)
-        except FileNotFoundError:
-            pass
+        opts, args = getopt.getopt(argv[1:], "hs:", ["size="])
+    except getopt.GetoptError:
+        print("Error: Unknown options\n"+usage_info)
+        sys.exit(-2)
+    if len(args) != 1:
+        print("Error: Missing folder\n" + usage_info)
+        sys.exit(-2)
+    output_folder = args[0]
+    for opt, arg in opts:
+        if opt == '-h':
+            print(usage_info)
+            sys.exit()
+        if opt in ("-s", "--size"):
+            file_size = arg
+    print(file_size)
+    print(output_folder)
+    return int(file_size), output_folder
 
 
 if __name__ == '__main__':
-    output_file = os.path.join('data', 'location2.csv')
-    T, N = generate_events(output_file, 1024, 5)
-    output_file_size = os.path.getsize(output_file)
-    print(f"{N} fake events generated in {T} seconds and written to {output_file} [{output_file_size}]")
-
+    main(*read_args(sys.argv))

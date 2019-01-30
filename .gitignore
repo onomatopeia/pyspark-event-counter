@@ -108,3 +108,4 @@ venv.bak/
 # PyCharm
 .idea/
 /test/data/location*.csv
+result.csv
