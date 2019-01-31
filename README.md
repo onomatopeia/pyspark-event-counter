@@ -42,9 +42,24 @@ Run `spark-submit events_counter.py -h` to see help.
 
 ### Running Spark application
 
+1. Create a variable with the name of the bucket where you will upload the Python script, like this:
+```set bucket=s3://emr-qrious-bucket/eventsQuery```
+```set data_bucket=s3://emr-qrious-bucket/wordcount2/data```
+```aws s3 sync . s3://emr-qrious-bucket/eventsQuery --exclude "*" --include "*.py"```
 
+2. Copy the Python script `events_counter.py` to `bucket`:
+```aws s3 cp events_counter.py %bucket%/events_counter.py```
 
+3. [Optional] Create a key-pair for EC2 (and save the results to a json file)
+```aws ec2 create-key-pair --key-name QriousKeyPair > QriousKeyPair.json```
 
-# Tests
+4. Create a EMR cluster. Save the ClusterId displayed in the output.
+```aws emr create-cluster --name "Qrious Application" --release-label emr-5.20.0 --applications Name=Spark --ec2-attributes KeyName=QriousKeyPair --instance-type m4.large --instance-count 3 --use-default-roles --query "ClusterId" --output text```
+The Cluster Id will be printed out (like `j-2EQP9PD5PRDYL`), save it for the next step.
 
-`pytest`
+5. Add steps
+```--steps '[{"Args":["spark-submit","--deploy-mode","cluster","s3://emr-qrious-bucket/eventsQuery/events_counter.py","s3://emr-qrious-bucket/wordcount2/data"],"Type":"CUSTOM_JAR","ActionOnFailure":"CANCEL_AND_WAIT","Jar":"command-runner.jar","Properties":"","Name":"Event Counter"}]'```
+
+# Unit tests
+
+In terminal go to the main directory of this project and execute `pytest`.
