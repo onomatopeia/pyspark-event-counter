@@ -33,7 +33,7 @@ debugging or verification purposes.
 
 Run `spark-submit events_counter.py -h` to see help. 
 
-## AWS EMR
+## AWS EMR via AWS CLI
 
 ### Prerequisites
 - an S3 bucket with data folder containing `region.csv` and `location.csv` files
@@ -60,6 +60,10 @@ The Cluster Id will be printed out (like `j-2EQP9PD5PRDYL`), save it for the nex
 5. Add steps
 ```--steps '[{"Args":["spark-submit","--deploy-mode","cluster","s3://emr-qrious-bucket/eventsQuery/events_counter.py","s3://emr-qrious-bucket/wordcount2/data"],"Type":"CUSTOM_JAR","ActionOnFailure":"CANCEL_AND_WAIT","Jar":"command-runner.jar","Properties":"","Name":"Event Counter"}]'```
 
+### AWS EMR via Boto3
+
+1. Copy `aws.cfg.template` file as `aws.cfg` and fill with data. 
+2. Run `boto_executor.py`
 # Unit tests
 
 In terminal go to the main directory of this project and execute `pytest`.

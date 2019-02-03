@@ -1,6 +1,5 @@
 from __future__ import print_function
 import os
-import time
 import sys
 import getopt
 from pyspark.sql import SparkSession
@@ -55,21 +54,19 @@ def process(spark, data_directory, output_directory):
 
 def main(directory, delete_auxiliary_folder):
     output_directory = os.path.join(directory, OUTPUT_DIR)
-    output_file = RESULT_CSV  # os.path.join(directory, RESULT_CSV)
+    output_file = os.path.join(directory, RESULT_CSV)
 
     # Create a new Spark session
-    with spark_session("QriousEventCounter") as spark:
-        t0 = time.time()
+    with spark_session("EventCounter") as spark:
         # run Spark application - count events per region and date
         process(spark, directory, output_directory)
-        t1 = time.time() - t0
-        print('Processing took {} seconds.'.format(t1))
 
-    # Merge output files to one
-    merge_output_files(output_directory, output_file, CSV_HEADER)
+    # Merge output files to one - this will work only if the files are local
+    if os.path.isdir(output_directory):
+        merge_output_files(output_directory, output_file, CSV_HEADER)
 
-    if delete_auxiliary_folder:
-        delete_folder(output_directory)
+        if delete_auxiliary_folder:
+            delete_folder(output_directory)
 
 
 def parse_argv(args):

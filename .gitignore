@@ -109,3 +109,5 @@ venv.bak/
 .idea/
 /test/data/location*.csv
 result.csv
+/aws.cfg
+/test/data/output/
