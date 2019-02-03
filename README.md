@@ -1,27 +1,66 @@
-# Prerequisites
+# About
 
-
+pyspark-event-counter is a small Spark application that reads and 
+processes two data sources. Input formats are csv 
+files in the format given below. Output is a csv file containing 
+the counts of events per day and per region.  
+ 
+ 
+### Input-Files 
+ 
+ region.csv (up to 1000 rows)
+ ```
+"region_id","region_name" 
+"1","Whakatane District" 
+"2","Rotorua District" 
+"3","Otorohanga District"
+``` 
+ 
+ 
+location.csv (up to 1TB) 
+```
+"lat","long","region_id","date" 
+"-38.19189","177.0521","1","2019-01-17" 
+"-38.191333","176.339021","2","2019-01-18" 
+"-38.1861","175.20416","3","2019-01-19" 
+"-38.180279","175.21477","3","2019-01-19" 
+"-38.17995","176.25936","2","2019-01-20" 
+```
+ 
+### Output-File 
+ 
+result.csv 
+```
+"region_name","date","count" 
+"Whakatane District", "2019-01-17", "1" 
+"Rotorua District","2019-01-18","1" 
+"Otorohanga District","2019-01-19","2" 
+"Rotorua District","2019-01-20","1" 
+```
 
 # Execution
 
-The code was written in Python 3 and tested under Python 3.6.5, but is (to the best of my knowledge) compliant with 
+The code was written in Python 3 and tested under Python 3.6.5, but is (to the best of my knowledge) 
+compliant with 
 earlier versions of Python 3.x as well as with Python 2.7. 
   
 Below are instruction how to execute this Spark application on [local environment](#local-environment) and on [AWS 
-EMR](#aws-emr). 
-In either case, **clone this repository to your local machine** first. 
+EMR](#aws-emr-via-boto3). 
 
-## Local environment
+In either case, 
+- clone this repository to your local machine,
+- install Spark (unless already installed),
+- from the main project directory install required packages
+    ```
+    pip install -r requirements.txt
+    ``` 
 
-### Prerequisites
+## Local Environment
 
-To run this code locally you need to have Spark installed and `pyspark` Python module.
-
-### Test data
+### [Optional] Generate Test Data
 In `test/data` folder you can find a `region.csv` file with a list of districts in New Zealand. 
 
-Run `python3 data_generator.py` (or `python data_generator.py` for Python 2.7) to generate a `location.csv` file. By 
-default it will be 1GB; to set a different size see help: `python3 data_generator.py -h`
+Run `python3 data_generator.py` to generate a `location.csv` file. By default it will be 1GB; to set a different size see help: `python3 data_generator.py -h`
 
 ### Running Spark application
 
@@ -29,41 +68,54 @@ Usage: `spark-submit events_counter.py [-d] <data_folder>`
 
 `-d` Spark creates multiple csv output files with partial results. These files are merged into a single `result.csv` 
 file. Use this flag to delete partial output files. By default all partial files are preserved and can be used for 
-debugging or verification purposes.    
+debugging or verification purposes. 
 
 Run `spark-submit events_counter.py -h` to see help. 
 
-## AWS EMR via AWS CLI
+## AWS EMR via Boto3
+
+Boto-executor automatically executes event counting job on AWS EMR cluster. Precisely, it does 
+the following:
+1. copies `events_counter.py` script to the AWS S3 bucket, 
+2. starts a Spark cluster on AWS EMR, 
+3. copies the Python script from the S3 bucket to the cluster's local file system, 
+4. executes `events_counter.py` as a Spark application; this is executed in parallel and produces a number of csv 
+files in `output` directory on the data S3 bucket,  
+5. copies csv files from the `output` directory to the local HDFS file system,
+6. uses hadoop functionality to merge csv files into a single `result.csv` file,
+7. copies `result.csv` file to the data S3 bucket.
+
+The cluster terminates automatically; this happens in case of both success and failure.
 
 ### Prerequisites
-- an S3 bucket with data folder containing `region.csv` and `location.csv` files
+- a data S3 bucket containing `region.csv` and `location.csv` files
 - an S3 bucket where the Spark application can be copied to
-- configured AWS CLI 
 
-### Running Spark application
-
-1. Create a variable with the name of the bucket where you will upload the Python script, like this:
-```set bucket=s3://emr-qrious-bucket/eventsQuery```
-```set data_bucket=s3://emr-qrious-bucket/wordcount2/data```
-```aws s3 sync . s3://emr-qrious-bucket/eventsQuery --exclude "*" --include "*.py"```
-
-2. Copy the Python script `events_counter.py` to `bucket`:
-```aws s3 cp events_counter.py %bucket%/events_counter.py```
-
-3. [Optional] Create a key-pair for EC2 (and save the results to a json file)
-```aws ec2 create-key-pair --key-name QriousKeyPair > QriousKeyPair.json```
-
-4. Create a EMR cluster. Save the ClusterId displayed in the output.
-```aws emr create-cluster --name "Qrious Application" --release-label emr-5.20.0 --applications Name=Spark --ec2-attributes KeyName=QriousKeyPair --instance-type m4.large --instance-count 3 --use-default-roles --query "ClusterId" --output text```
-The Cluster Id will be printed out (like `j-2EQP9PD5PRDYL`), save it for the next step.
-
-5. Add steps
-```--steps '[{"Args":["spark-submit","--deploy-mode","cluster","s3://emr-qrious-bucket/eventsQuery/events_counter.py","s3://emr-qrious-bucket/wordcount2/data"],"Type":"CUSTOM_JAR","ActionOnFailure":"CANCEL_AND_WAIT","Jar":"command-runner.jar","Properties":"","Name":"Event Counter"}]'```
-
-### AWS EMR via Boto3
-
+### Execution
 1. Copy `aws.cfg.template` file as `aws.cfg` and fill with data. 
-2. Run `boto_executor.py`
+2. Run `boto_executor.py`. If the job flow was submitted without errors, the job flow ID will be displayed in a 
+terminal. 
+
+Note that the script termination only indicates that the job flow was submitted. It takes a few minutes for the job 
+flow to complete; the status can be observed in AWS console. 
+
+### Notes
+1. It would be more efficient if the csv files generated by the Spark application were saved to a local HDFS (instead
+ of being saved to S3 and then copied to HDFS - steps 4 and 5). Unfortunately, I haven't figured out how to achieve 
+ that. 
+2. Other possible approaches to merging csv files include:
+    - using `df.coalesce(1)` or `df.repartition(1)` but they still produce a folder with a long, task-related name. The 
+ only benefit is that it is a single file with all the results. The disadvantage is a potential speed reduction of the 
+ Spark application.
+    - using `df.toPandas()` can produce a single file, but [PySpark documentation](https://github
+  .com/apache/spark/blob/2190037757a81d3172f75227f7891d968e1f0d90/python/pyspark/sql/dataframe.py#L1454-L1455) advises that this method is only used
+  if "the dataframe is expected to be small, as all the data is loaded into the driver's memory." Given that our 
+  input is expected to reach 1TB this does not seem to be a good solution. 
+3. I was looking for a way to determine the status of a job flow with Boto3. Unfortunately, the method that does 
+exactly 
+that, 
+`describe_job_flows` has been deprecated and none of the recommended alternatives seemed right. 
+
 # Unit tests
 
 In terminal go to the main directory of this project and execute `pytest`.

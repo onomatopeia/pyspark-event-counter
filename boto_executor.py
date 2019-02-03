@@ -39,37 +39,67 @@ if __name__ == '__main__':
         Applications=[
             {
                 'Name': 'Spark'
+            },
+            {
+                'Name': 'Hadoop'
             }
         ],
         Steps=[
-        {
-            'Name': 'Setup Debugging',
-            'ActionOnFailure': 'TERMINATE_CLUSTER',
-            'HadoopJarStep': {
-                'Jar': 'command-runner.jar',
-                'Args': ['state-pusher-script']
-            }
-        },
-        {
-            'Name': 'Setup - Copy Files',
-            'ActionOnFailure': 'CANCEL_AND_WAIT',
-            'HadoopJarStep': {
-                'Jar': 'command-runner.jar',
-                'Args': ['aws', 's3', 'cp', S3_URI, '/home/hadoop/']
-            }
-        },
-        {
-            'Name': 'Run Spark Application - Events Counter',
-            'ActionOnFailure': 'CANCEL_AND_WAIT',
-            'HadoopJarStep': {
-                'Jar': 'command-runner.jar',
-                'Args': ['spark-submit', '/home/hadoop/{script}'.format(script=SCRIPT), S3_DATA_URI]
-            }
-        }
+            {
+                'Name': 'Setup Debugging',
+                'ActionOnFailure': 'TERMINATE_CLUSTER',
+                'HadoopJarStep': {
+                    'Jar': 'command-runner.jar',
+                    'Args': ['state-pusher-script']
+                }
+            },
+            {
+                'Name': 'Setup - Copy Files',
+                'ActionOnFailure': 'CANCEL_AND_WAIT',
+                'HadoopJarStep': {
+                    'Jar': 'command-runner.jar',
+                    'Args': ['aws', 's3', 'cp', S3_URI, '/home/hadoop/']
+                }
+            },
+            {
+                'Name': 'Run Spark Application - Events Counter',
+                'ActionOnFailure': 'CANCEL_AND_WAIT',
+                'HadoopJarStep': {
+                    'Jar': 'command-runner.jar',
+                    'Args': ['spark-submit', '/home/hadoop/{script}'.format(script=SCRIPT), S3_DATA_URI]
+                }
+            },
+            {
+                "Name": "S3DistCp step",
+                'HadoopJarStep': {
+                    "Jar": "command-runner.jar",
+                    "Args": ["s3-dist-cp","--s3Endpoint=s3.amazonaws.com", "--src={uri}/output/".format(uri=S3_DATA_URI),
+                             "--dest=hdfs:///output", "--srcPattern=.*csv"]
+                },
+                "ActionOnFailure": "CANCEL_AND_WAIT"
+            },
+            {
+                "Name": "Hadoop Merge step",
+                "ActionOnFailure": "CANCEL_AND_WAIT",
+                "HadoopJarStep": {
+                    "Args": ["hadoop", "fs", "-getmerge",
+                             "hdfs:///output", "/home/hadoop/result.csv"],
+                    "Jar": "command-runner.jar"
+                }
+            },
+            {
+                "Name": "Copy the result to S3",
+                "ActionOnFailure": "CANCEL_AND_WAIT",
+                "HadoopJarStep": {
+                    "Args": ["aws", "s3", "cp", "/home/hadoop/result.csv", "{uri}/result.csv".format(
+                        uri=S3_DATA_URI)],
+                    "Jar": "command-runner.jar"
+                }
+            },
         ],
         VisibleToAllUsers=True,
         JobFlowRole='EMR_EC2_DefaultRole',
         ServiceRole='EMR_DefaultRole'
     )
     job_flow_id = response['JobFlowId']
-    print(job_flow_id)
+    print('Job flow successful submitted. JobFlowId={job_flow_id}'.format(job_flow_id=job_flow_id))
