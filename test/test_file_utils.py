@@ -1,5 +1,5 @@
 from __future__ import print_function
-from file_utils import delete_folder, merge_output_files
+from events_counter import delete_folder, merge_output_files
 import os
 import tempfile
 
