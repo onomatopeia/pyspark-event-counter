@@ -39,10 +39,6 @@ result.csv
 ```
 
 # Execution
-
-The code was written in Python 3 and tested under Python 3.6.5, but is (to the best of my knowledge) 
-compliant with 
-earlier versions of Python 3.x as well as with Python 2.7. 
   
 Below are instruction how to execute this Spark application on [local environment](#local-environment) and on [AWS 
 EMR](#aws-emr-via-boto3). 
@@ -56,6 +52,9 @@ In either case,
     ``` 
 
 ## Local Environment
+The code was tested locally under Python 3.6.5, Spark 2.3.2 (for Hadoop 2.7),
+and Java HotSpot(TM) 64-Bit Server VM, 1.8.0_121. 
+`events_counter.py` and `data_generator.py` scripts are Python 2.7 compliant.
 
 ### [Optional] Generate Test Data
 In `test/data` folder you can find a `region.csv` file with a list of districts in New Zealand. 
@@ -93,7 +92,7 @@ The cluster terminates automatically; this happens in case of both success and f
 
 ### Execution
 1. Copy `aws.cfg.template` file as `aws.cfg` and fill with data. 
-2. Run `boto_executor.py`. If the job flow was submitted without errors, the job flow ID will be displayed in a 
+2. Run `python3 boto_executor.py`. If the job flow was submitted without errors, the job flow ID will be displayed in a 
 terminal. 
 
 Note that the script termination only indicates that the job flow was submitted. It takes a few minutes for the job 
