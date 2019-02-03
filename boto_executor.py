@@ -58,7 +58,7 @@ if __name__ == '__main__':
                 'ActionOnFailure': 'CANCEL_AND_WAIT',
                 'HadoopJarStep': {
                     'Jar': 'command-runner.jar',
-                    'Args': ['aws', 's3', 'cp', S3_URI, '/home/hadoop/']
+                    'Args': ['aws', 's3', 'cp', S3_URI, '/home/hadoop/{script}'.format(script=SCRIPT)]
                 }
             },
             {
